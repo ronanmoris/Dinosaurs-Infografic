@@ -104,7 +104,6 @@ p {
 }
 
 .grid-item p {
-    background: rgba(000,000,000, .3);
     position: absolute;
     bottom: 0;
     width: 100%;
@@ -114,6 +113,11 @@ p {
     font-size: 1.2em;
     font-weight: 600;
     color: #fff;
+}
+
+/* Shadow is not needed for the Human grid */
+.grid-item:not(:nth-child(5)) p {
+    background: rgba(000,000,000, .3);
 }
 
 /* Form Styles */
@@ -171,4 +175,8 @@ select {
 .fine-print {
     display: block;
     font-size: 0.7em;
+}
+
+.hidden {
+    display: none;
 }
