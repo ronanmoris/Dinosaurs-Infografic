@@ -1,63 +1,74 @@
-import { difference, feetToInches, fetchDinos, getImageSource, hide, inchesToFeet } from './utils.js';
+import {difference, feetToInches, fetchDinos, getImageSource, hide, inchesToFeet} from './utils.js';
 
 const dinoCompareForm = document.querySelector('#dino-compare');
 const gridContainer = document.querySelector('#grid');
 const compareBtn = dinoCompareForm.querySelector('#btn');
-const nameInput = dinoCompareForm.querySelector('#name');
 
-function Dino({ species, src, fact, diet, height, weight }) {
-  const facts = [fact];
-
-  const compareDiet = human => {
-    const dietFact = diet === human.diet
-      ? `The ${species} and the ${human.species} are both ${diet}s.`
-      : `The ${species} is a ${diet} animal, unlike ${human.species} that is a ${human.diet}.`;
-    facts.push(dietFact);
-  };
-
-  const compareWeight = human => {
-    const weightDiff = difference(weight, human.weight);
-    const weightFact = `The ${species} weighs ${weight} pounds and is ${weightDiff} pounds ${weight > human.weight ? 'heavier' : 'lighter'} than ${human.species}.`;
-    facts.push(weightFact);
-  };
-
-  const compareHeight = human => {
-    const { feet = 0, inches = 0, species: humanSpecies = 'Human' } = human;
-    const measure = inches ? `${inches} (${inchesToFeet(inches)} feet)` : `${feetToInches(feet)} (${feet} feet)`;
-    const heightFact = `The ${species} is ${height} inches (${inchesToFeet(height)} feet) tall whereas ${humanSpecies} is ${measure}.`;
-    facts.push(heightFact);
+// Dino class
+class Dino {
+  constructor(species, fact, diet, height, weight, src) {
+    this.facts = [fact];
+    this.species = species;
+    this.diet = diet;
+    this.height = height;
+    this.weight = weight;
+    this.fact = fact;
+    this.src = src;
   }
-
-  const getRandomFact = () => facts[Math.floor(Math.random() * facts.length)];
-
-  return {
-    species,
-    src,
-    fact,
-    diet,
-    compareDiet,
-    compareHeight,
-    compareWeight,
-    getRandomFact,
-  };
+  compareDiet(human) {
+    const dietFact =
+      this.diet === human.diet
+        ? `The ${this.species} and the ${human.name} are both ${this.diet}s.`
+        : `The ${this.species} is a ${this.diet} animal, unlike ${human.name} that is a(n) ${human.diet}.`;
+    this.facts.push(dietFact);
+  }
+  compareWeight(human) {
+    const weightDiff = difference(this.weight, human.weight);
+    const weightFact = `The ${this.species} weighs ${this.weight} pounds and is ${weightDiff} pounds ${
+      this.weight > human.weight ? 'heavier' : 'lighter'
+    } than ${human.name}.`;
+    this.facts.push(weightFact);
+  }
+  compareHeight(human) {
+    const {feet = 0, inches = 0, name} = human;
+    const measure = inches ? `${inches} (${inchesToFeet(inches)} feet)` : `${feetToInches(feet)} (${feet} feet)`;
+    const heightFact = `The ${this.species} is ${this.height} inches (${inchesToFeet(
+      this.height,
+    )} feet) tall whereas ${name} is ${measure}.`;
+    this.facts.push(heightFact);
+  }
+  // Dino always renders a random fact
+  generateRandomFact() {
+    return this.facts[Math.floor(Math.random() * this.facts.length)];
+  }
 }
 
+// Human class doesn't have a fact(super's second argument)
+class Human extends Dino {
+  constructor(name, diet, feet, inches, weight, src) {
+    super(name, null, diet, inches, weight, src);
+  }
+}
+
+// Retrieves data from form
 const getHumanData = () => {
   return (function () {
     const [name, feet, inches, weight] = dinoCompareForm.querySelectorAll('input');
     const diet = dinoCompareForm.querySelector('#diet');
 
     return {
-      species: name.value,
+      name: name.value,
+      species: 'Human',
       feet: feet.value,
       inches: inches.value,
       weight: weight.value,
       diet: diet.value.toLowerCase(),
     };
   })();
-}
+};
 
-const renderTiles = ({ species, src, fact }) => {
+// Creates and appends the elements to the dom
+const renderTiles = ({species, src, fact}) => {
   const tileContainer = document.createElement('div');
   tileContainer.setAttribute('class', 'grid-item');
 
@@ -72,38 +83,35 @@ const renderTiles = ({ species, src, fact }) => {
 
   tileContainer.append(title, characterImage, factParagraph);
   gridContainer.appendChild(tileContainer);
-}
+};
 
-const formatDinoTile = ({ species, fact, getRandomFact }, index) => {
-  let specialFact;
-  if (species === 'Pigeon') {
-    specialFact = fact;
-  } else if (index === 4) {
-    specialFact = null;
-  } else {
-    specialFact = getRandomFact();
-  }
-
-  return { species, src: getImageSource(species, index), fact: specialFact }
-}
-
+// It hides the form and handles the infografic rendering
 const handleClick = async () => {
-  const { Dinos: dinos } = await fetchDinos();
+  const {Dinos: creatures} = await fetchDinos();
   const human = getHumanData();
 
   hide(dinoCompareForm);
 
-  dinos.splice(4, 0, human);
+  creatures.splice(4, 0, human);
 
-  dinos.forEach(({ species, fact, diet, height, weight }, index) => {
-    const dino = Dino({ species, fact, diet, height, weight });
+  creatures.forEach(({species, name, fact, diet, height, feet, inches, weight}, index) => {
+    let tile;
+    const src = getImageSource(species, index);
 
-    dino.compareWeight(human);
-    dino.compareDiet(human);
-    dino.compareHeight(human);
-
-    renderTiles(formatDinoTile(dino, index));
+    if (species === 'Human') {
+      tile = new Human(name, diet, feet, inches, weight, src);
+    } else if (species === 'Pigeon') {
+      tile = new Dino(species, fact, diet, height, weight, src);
+    } else {
+      const dino = new Dino(species, fact, diet, height, weight, src);
+      dino.compareDiet(human);
+      dino.compareHeight(human);
+      dino.compareWeight(human);
+      dino.fact = dino.generateRandomFact();
+      tile = dino;
+    }
+    renderTiles(tile);
   });
-}
+};
 
 compareBtn.addEventListener('click', handleClick);
